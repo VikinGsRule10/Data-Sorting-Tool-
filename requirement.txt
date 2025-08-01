@@ -1,0 +1,6 @@
+# No external dependencies required for basic functionality
+# All sorting algorithms use only Python standard library
+
+# Optional: For enhanced CLI experience (uncomment if desired)
+# rich>=10.0.0
+# click>=8.0.0

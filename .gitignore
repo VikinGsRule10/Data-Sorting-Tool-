@@ -1,0 +1,30 @@
+# Python cache and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# MacOS and Windows system files
+.DS_Store
+Thumbs.db
+
+# IDE/project-specific files
+.vscode/
+.idea/
+
+# Logs or output
+*.log
+*_sorted.txt
+
+# Test, coverage, or build outputs
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
