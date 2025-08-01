@@ -71,3 +71,4 @@ For each sort operation, the tool provides:
 ### Windows
 ### Kali Linux
 ### Unbuntu
+### macOs
