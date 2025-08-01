@@ -69,3 +69,5 @@ For each sort operation, the tool provides:
 ## 🔧 Platform Compatibility
 
 ### Windows
+### Kali Linux
+### Unbuntu
