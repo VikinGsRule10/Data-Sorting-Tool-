@@ -2,45 +2,112 @@
 import os
 import sys
 import time
+import random
 import argparse
 from typing import List, Tuple, Any
+
+
+class ProgressBar:
+    def __init__(self, total: int, width: int = 50):
+        self.total = total
+        self.width = width
+        self.current = 0
+        self.start_time = time.time()
+    
+    def update(self, current: int):
+        self.current = current
+        percent = min(100.0 * current / self.total, 100.0)
+        filled_width = int(self.width * current / self.total)
+        
+        bar = '#' * filled_width + '-' * (self.width - filled_width)
+        elapsed_time = time.time() - self.start_time
+        
+        if current > 0:
+            eta = elapsed_time * (self.total - current) / current
+            eta_str = f"ETA: {eta:.1f}s"
+        else:
+            eta_str = "ETA: --"
+        
+        sys.stdout.write(f'\r[{bar}] {percent:.1f}% {eta_str}')
+        sys.stdout.flush()
+    
+    def finish(self):
+        self.update(self.total)
+        print()
+
 
 class SortingAlgorithms:
     def __init__(self):
         self.comparisons = 0
         self.swaps = 0
+        self.progress_bar = None
+        self.progress_counter = 0
     
     def reset_counters(self):
         self.comparisons = 0
         self.swaps = 0
+        self.progress_counter = 0
+    
+    def set_progress_bar(self, total_operations: int):
+        """Initialize progress bar for sorting operations"""
+        self.progress_bar = ProgressBar(total_operations)
+        self.progress_counter = 0
+    
+    def update_progress(self):
+        """Update progress bar if it exists"""
+        if self.progress_bar:
+            self.progress_counter += 1
+            if self.progress_counter % max(1, self.progress_bar.total // 100) == 0:
+                self.progress_bar.update(self.progress_counter)
+    
+    def finish_progress(self):
+        """Finish progress bar"""
+        if self.progress_bar:
+            self.progress_bar.finish()
+            self.progress_bar = None
     
     def bubble_sort(self, arr: List[Any]) -> List[Any]:
         self.reset_counters()
         n = len(arr)
+        total_ops = n * n // 2  # Approximate operations
+        self.set_progress_bar(total_ops)
+        
         for i in range(n):
             for j in range(0, n - i - 1):
                 self.comparisons += 1
                 if arr[j] > arr[j + 1]:
                     arr[j], arr[j + 1] = arr[j + 1], arr[j]
                     self.swaps += 1
+                self.update_progress()
+        
+        self.finish_progress()
         return arr
     
     def selection_sort(self, arr: List[Any]) -> List[Any]:
         self.reset_counters()
         n = len(arr)
+        total_ops = n * n // 2
+        self.set_progress_bar(total_ops)
+        
         for i in range(n):
             min_idx = i
             for j in range(i + 1, n):
                 self.comparisons += 1
                 if arr[j] < arr[min_idx]:
                     min_idx = j
+                self.update_progress()
             if min_idx != i:
                 arr[i], arr[min_idx] = arr[min_idx], arr[i]
                 self.swaps += 1
+        
+        self.finish_progress()
         return arr
     
     def insertion_sort(self, arr: List[Any]) -> List[Any]:
         self.reset_counters()
+        n = len(arr)
+        self.set_progress_bar(n)
+        
         for i in range(1, len(arr)):
             key = arr[i]
             j = i - 1
@@ -53,11 +120,19 @@ class SortingAlgorithms:
                 else:
                     break
             arr[j + 1] = key
+            self.update_progress()
+        
+        self.finish_progress()
         return arr
     
     def merge_sort(self, arr: List[Any]) -> List[Any]:
         self.reset_counters()
-        return self._merge_sort_helper(arr)
+        n = len(arr)
+        total_ops = n * (n.bit_length() - 1) if n > 0 else 1  # Approximate for O(n log n)
+        self.set_progress_bar(total_ops)
+        result = self._merge_sort_helper(arr)
+        self.finish_progress()
+        return result
     
     def _merge_sort_helper(self, arr: List[Any]) -> List[Any]:
         if len(arr) <= 1:
@@ -82,6 +157,7 @@ class SortingAlgorithms:
                 result.append(right[j])
                 j += 1
             self.swaps += 1
+            self.update_progress()
         
         result.extend(left[i:])
         result.extend(right[j:])
@@ -90,6 +166,8 @@ class SortingAlgorithms:
     def heap_sort(self, arr: List[Any]) -> List[Any]:
         self.reset_counters()
         n = len(arr)
+        total_ops = n * (n.bit_length() - 1) if n > 0 else 1
+        self.set_progress_bar(total_ops)
         
         # Build max heap
         for i in range(n // 2 - 1, -1, -1):
@@ -100,7 +178,9 @@ class SortingAlgorithms:
             arr[0], arr[i] = arr[i], arr[0]
             self.swaps += 1
             self._heapify(arr, i, 0)
+            self.update_progress()
         
+        self.finish_progress()
         return arr
     
     def _heapify(self, arr: List[Any], n: int, i: int):
@@ -128,6 +208,9 @@ class SortingAlgorithms:
         if not arr:
             return arr
         
+        n = len(arr)
+        self.set_progress_bar(n * 2)  # Two main passes
+        
         max_val = max(arr)
         min_val = min(arr)
         range_val = max_val - min_val + 1
@@ -139,6 +222,7 @@ class SortingAlgorithms:
         for num in arr:
             count[num - min_val] += 1
             self.comparisons += 1
+            self.update_progress()
         
         # Cumulative count
         for i in range(1, range_val):
@@ -149,7 +233,9 @@ class SortingAlgorithms:
             output[count[arr[i] - min_val] - 1] = arr[i]
             count[arr[i] - min_val] -= 1
             self.swaps += 1
+            self.update_progress()
         
+        self.finish_progress()
         return output
     
     def radix_sort(self, arr: List[int]) -> List[int]:
@@ -158,12 +244,15 @@ class SortingAlgorithms:
             return arr
         
         max_val = max(arr)
-        exp = 1
+        digits = len(str(max_val))
+        self.set_progress_bar(len(arr) * digits)
         
+        exp = 1
         while max_val // exp > 0:
             self._counting_sort_for_radix(arr, exp)
             exp *= 10
         
+        self.finish_progress()
         return arr
     
     def _counting_sort_for_radix(self, arr: List[int], exp: int):
@@ -175,6 +264,7 @@ class SortingAlgorithms:
             index = arr[i] // exp
             count[index % 10] += 1
             self.comparisons += 1
+            self.update_progress()
         
         for i in range(1, 10):
             count[i] += count[i - 1]
@@ -195,16 +285,17 @@ class SortingAlgorithms:
         if not arr:
             return arr
         
-        # Normalize for bucket sort (assuming values are between 0 and 1)
-        # If values are not normalized, we'll normalize them
+        n = len(arr)
+        self.set_progress_bar(n * 2)
+        
         min_val = min(arr)
         max_val = max(arr)
         range_val = max_val - min_val
         
         if range_val == 0:
+            self.finish_progress()
             return arr
         
-        n = len(arr)
         buckets = [[] for _ in range(n)]
         
         # Put array elements into buckets
@@ -214,6 +305,7 @@ class SortingAlgorithms:
                 bucket_index = n - 1
             buckets[bucket_index].append(num)
             self.comparisons += 1
+            self.update_progress()
         
         # Sort individual buckets using insertion sort
         for bucket in buckets:
@@ -223,7 +315,9 @@ class SortingAlgorithms:
         result = []
         for bucket in buckets:
             result.extend(bucket)
+            self.update_progress()
         
+        self.finish_progress()
         return result
     
     def _insertion_sort_for_bucket(self, arr: List[float]):
@@ -240,6 +334,39 @@ class SortingAlgorithms:
                     break
             arr[j + 1] = key
 
+
+class DataGenerator:
+    @staticmethod
+    def generate_random_dataset(n: int) -> str:
+        """Generate random dataset of size 10^n and save to file"""
+        size = 10 ** n
+        filename = f"random_dataset_{size}.txt"
+        
+        print(f"\nGenerating random dataset of size {size:,}...")
+        
+        # Create progress bar for data generation
+        progress_bar = ProgressBar(size)
+        
+        try:
+            with open(filename, 'w') as file:
+                for i in range(size):
+                    # Generate random integer between 1 and 100000
+                    random_num = random.randint(1, 100000)
+                    file.write(f"{random_num}\n")
+                    
+                    # Update progress bar every 1000 operations or for smaller datasets
+                    if i % max(1, size // 100) == 0 or size <= 1000:
+                        progress_bar.update(i + 1)
+            
+            progress_bar.finish()
+            print(f"Dataset successfully generated and saved as: {filename}")
+            return filename
+            
+        except Exception as e:
+            print(f"Error generating dataset: {e}")
+            return None
+
+
 class DataSortingTool:
     def __init__(self):
         self.sorter = SortingAlgorithms()
@@ -253,6 +380,42 @@ class DataSortingTool:
             '7': ('Radix Sort', self.sorter.radix_sort),
             '8': ('Bucket Sort', self.sorter.bucket_sort)
         }
+    
+    def display_initial_menu(self):
+        """Display initial menu for user choice"""
+        print("\n" + "="*50)
+        print("DATA SORTING TOOL - Welcome")
+        print("="*50)
+        print("What would you like to do?")
+        print("1. Sort existing data from file")
+        print("2. Generate random dataset")
+        print("0. Exit")
+        print("="*50)
+    
+    def get_initial_choice(self) -> str:
+        """Get user's initial choice"""
+        while True:
+            choice = input("Enter your choice (0-2): ").strip()
+            if choice in ['0', '1', '2']:
+                return choice
+            print("Invalid choice. Please enter 0, 1, or 2.")
+    
+    def get_dataset_size(self) -> int:
+        """Get dataset size (n) for 10^n elements"""
+        while True:
+            try:
+                n = input("Enter the value of 'n' for dataset size 10^n (recommended: 1-6): ").strip()
+                n = int(n)
+                if n < 0:
+                    print("Please enter a non-negative integer.")
+                    continue
+                if n > 7:
+                    confirm = input(f"Dataset size will be {10**n:,} elements. This might take a while. Continue? (y/n): ")
+                    if confirm.lower() not in ['y', 'yes']:
+                        continue
+                return n
+            except ValueError:
+                print("Please enter a valid integer.")
     
     def load_data_from_file(self, file_path: str) -> List[Any]:
         """Load data from file, supporting different formats"""
@@ -325,9 +488,9 @@ class DataSortingTool:
     def get_file_path(self, initial_prompt: bool = True) -> str:
         """Get file path from user with option to exit"""
         if initial_prompt:
-            prompt = "Enter the path to your data file (or type '0' to exit): "
+            prompt = "Enter the path to your data file (or type '0' to go back): "
         else:
-            prompt = "Enter the path to your new data file (or type '0' to exit): "
+            prompt = "Enter the path to your new data file (or type '0' to go back): "
         
         while True:
             file_path = input(prompt).strip()
@@ -336,7 +499,7 @@ class DataSortingTool:
                 return None
             
             if not file_path:
-                print("Please enter a valid file path or type '0' to exit.")
+                print("Please enter a valid file path or type '0' to go back.")
                 continue
             
             # Try to load data from file
@@ -357,6 +520,8 @@ class DataSortingTool:
         data_copy = data.copy()  # Don't modify original data
         
         print(f"\nRunning {algorithm_name}...")
+        print("Progress:")
+        
         start_time = time.time()
         
         # Special handling for algorithms that require specific data types
@@ -422,14 +587,15 @@ class DataSortingTool:
         print("What would you like to do next?")
         print("1. Try another sorting algorithm on the same dataset")
         print("2. Load a different dataset")
+        print("3. Go back to main menu")
         print("0. Exit the tool")
         print("-"*50)
         
         while True:
-            choice = input("Enter your choice (0-2): ").strip()
-            if choice in ['0', '1', '2']:
+            choice = input("Enter your choice (0-3): ").strip()
+            if choice in ['0', '1', '2', '3']:
                 return choice
-            print("Invalid choice. Please enter 0, 1, or 2.")
+            print("Invalid choice. Please enter 0, 1, 2, or 3.")
     
     def run(self):
         """Main application loop"""
@@ -437,53 +603,81 @@ class DataSortingTool:
         print("Cross-platform CLI sorting utility")
         print("-" * 40)
         
-        # Main application loop
         while True:
-            # Get file path and data
-            result = self.get_file_path()
-            if result is None:  # User chose to exit
+            self.display_initial_menu()
+            initial_choice = self.get_initial_choice()
+            
+            if initial_choice == '0':
                 print("Thank you for using Data Sorting Tool!")
                 break
             
-            current_file_path, current_data = result
+            elif initial_choice == '1':
+                # Sort existing data from file
+                result = self.get_file_path()
+                if result is None:  # User chose to go back
+                    continue
+                
+                current_file_path, current_data = result
+                self._sorting_workflow(current_data, current_file_path)
             
-            # Sorting loop for current dataset
-            while True:
-                self.display_menu()
-                choice = self.get_user_choice()
+            elif initial_choice == '2':
+                # Generate random dataset
+                n = self.get_dataset_size()
+                filename = DataGenerator.generate_random_dataset(n)
                 
-                if choice == '0':
-                    print("Thank you for using Data Sorting Tool!")
-                    return  # Exit the entire tool
-                
-                algorithm_name = self.algorithms[choice][0]
-                sorted_data, execution_time = self.run_sorting(current_data, choice)
-                
-                if sorted_data is not None:
-                    self.display_results(current_data, sorted_data, execution_time, algorithm_name)
-                    
-                    # Ask if user wants to save results
-                    save_choice = input("\nSave sorted data to file? (y/n): ").strip().lower()
-                    if save_choice in ['y', 'yes']:
-                        self.save_results(sorted_data, current_file_path)
-                    
-                    # Ask what to do next
-                    next_action = self.get_next_action_choice()
-                    
-                    if next_action == '0':  # Exit tool
-                        print("Thank you for using Data Sorting Tool!")
-                        return
-                    elif next_action == '1':  # Try another algorithm on same data
-                        continue  # Continue inner loop with same data
-                    elif next_action == '2':  # Load different dataset
-                        break  # Break inner loop to load new dataset
+                if filename:
+                    data = self.load_data_from_file(filename)
+                    if data:
+                        self._sorting_workflow(data, filename)
+                    else:
+                        print("Failed to load generated dataset.")
                 else:
-                    print("Sorting failed. Please try again.")
+                    print("Failed to generate dataset.")
+    
+    def _sorting_workflow(self, current_data: List[Any], current_file_path: str):
+        """Handle the sorting workflow for a given dataset"""
+        while True:
+            self.display_menu()
+            choice = self.get_user_choice()
+            
+            if choice == '0':
+                return  # Go back to main menu
+            
+            algorithm_name = self.algorithms[choice][0]
+            sorted_data, execution_time = self.run_sorting(current_data, choice)
+            
+            if sorted_data is not None:
+                self.display_results(current_data, sorted_data, execution_time, algorithm_name)
+                
+                # Ask if user wants to save results
+                save_choice = input("\nSave sorted data to file? (y/n): ").strip().lower()
+                if save_choice in ['y', 'yes']:
+                    self.save_results(sorted_data, current_file_path)
+                
+                # Ask what to do next
+                next_action = self.get_next_action_choice()
+                
+                if next_action == '0':  # Exit tool
+                    print("Thank you for using Data Sorting Tool!")
+                    sys.exit(0)
+                elif next_action == '1':  # Try another algorithm on same data
+                    continue  # Continue inner loop with same data
+                elif next_action == '2':  # Load different dataset
+                    result = self.get_file_path(initial_prompt=False)
+                    if result is None:
+                        continue
+                    current_file_path, current_data = result
+                    continue
+                elif next_action == '3':  # Go back to main menu
+                    return
+            else:
+                print("Sorting failed. Please try again.")
+
 
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description='CLI Data Sorting Tool')
-    parser.add_argument('--version', action='version', version='Data Sorting Tool v1.0')
+    parser.add_argument('--version', action='version', version='Data Sorting Tool v1.1')
     parser.add_argument('--file', '-f', help='Input file path')
     
     args = parser.parse_args()
@@ -496,13 +690,10 @@ def main():
         if data is not None:
             print(f"Loaded {len(data)} elements from {args.file}")
             print(f"Data preview: {data[:5]}{'...' if len(data) > 5 else ''}")
-            # Set the current data and file path for the tool
-            tool.current_data = data
-            tool.current_file_path = args.file
-            # Continue with interactive menu
-            tool.run()
+            tool._sorting_workflow(data, args.file)
     else:
         tool.run()
+
 
 if __name__ == "__main__":
     main()
